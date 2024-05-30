@@ -1,0 +1,467 @@
+// ==UserScript==
+// @name        REGEX Search
+// @namespace   CUSTOM DEV
+// @match       *://*/*
+// @grant       GM_setValue
+// @grant       GM_getValue
+// @grant       GM_listValues
+// @grant       GM_deleteValue
+// @grant       GM_setClipboard
+// @grant       GM_addElement
+// @grant       GM_addStyle
+// @version     1.7
+// @author      Spencer Anderson
+// @description Creates a REGEX search dialog box on webpages.
+// @require     https://cdn.jsdelivr.net/npm/@violentmonkey/shortcut@1
+// ==/UserScript==
+
+//
+//
+
+const {register} = VM.shortcut;
+
+// Inject HTML and CSS for the button and dialog box
+const buttonHTML = `<div id="circle-button" style="background-color: red; border-radius: 50%;">🔍</div>
+        <div id="dialog-box" style="display: none; flex-direction: column; align-items: center; gap: 3px; width:307px; height: 374px;">
+                <div style="display:flex; flex-direction: colum; gap: 3px; margin: 15px; width: -webkit-fill-available; margin-bottom: 0px; flex-direction: column;">
+                        <div class="VMrow">
+                                <input id='regexInpt' type="text" plaveholder="Regex Exp. Input" style="height: 20px; width: 70%; background-color: white; border: darkred 1px solid; color: black;">
+                                <button id="submit" style="display: inline-block; border: none; font-size: 16px; padding: 3px 10px; background-color: #cdcdcde0; color: black; cursor: pointer;">Search</button>
+                        </div>
+                        <div class="VMrow" style="display: flex; justify-content: center; gap: 5px;">
+                                Search:
+                                <input type="checkbox" id="selectionSearch"> Selection
+                                <input type="checkbox" id="pageSearch"> Page
+                        </div>
+                        <div class="VMrow">
+                                <button id="saveb" style='display: inline-block; border: none; font-size: 16px; padding: 3px 10px; background-color: #cdcdcde0; color: black; cursor: pointer;'>Save</button>
+                                <input id='saveField' type='text' placeholder='Save Title' style='height: 20px; width: 70%; background-color: white; border: darkred 1px solid; color: black;'>
+                        </div>
+                        <div class="VMrow" style='display: flex; justify-content: center; gap: 5px;'>
+                                <button id="resultsTab" class='tabA' style="height:25px">Results</button>
+                                <button id='savedTab' class='tabI' style="height:25px">Saved Exp.</button>
+                        </div>
+                </div>
+                <div id='results' style='width: 300px; height: -webkit-fill-available; display: flex; width: -webkit-fill-available; border: black 2px solid; flex-direction: column; justify-content: space-between; height: 250px;'>
+                    <div>
+                        <button id='copyBtn'>Copy 📋</button>
+                        <a id='resultsDisplay' type='text' style='line-height: 1.2; color: black; padding: 3px; margin-bottom: 10px; white-space: pre-line; background-color: white; width: -webkit-fill-available; display: block; overflow-y: scroll; background-color: white; height: 175px;' class='filledTextBox'>
+                        </a>
+                    </div>
+                    <div style="display: flex; width: -webkit-fill-available; gap: 5px; justify-content: space-around;">
+                        <div class="checkSwitchLabel">
+                                <button id="commaSeparatedCheckbox" class="checkSwitch" onclick="this.classList.toggle('checked');this.ariaChecked = this.classList.contains('checked');" aria-checked='false' role='switch'></button>
+                                <div class="label" id="commaSeparatedLabel" style="white-space: pre-line;">Comma
+                                separated</div>
+                        </div>
+
+                        <div class="checkSwitchLabel">
+                                <button id="orSeparatedCheckbox" class="checkSwitch" onclick="this.classList.toggle('checked');this.ariaChecked = this.classList.contains('checked');" aria-checked='false' role='switch'></button>
+                                <div class="label" id="orSeparatedLabel" style="white-space: pre-line;">Or
+                                separated</div>
+                        </div>
+
+                        <div class="checkSwitchLabel">
+                                <button id="quotesCheckbox" class="checkSwitch" onclick="this.classList.toggle('checked');this.ariaChecked = this.classList.contains('checked');" aria-checked='false' role='switch'></button>
+                                <div class="label" id="quotesLabel" style="white-space: pre-line;">Surrounding
+                                quotes</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="savedExp" style="display:none"></div>
+
+        </div>`;
+
+const styleCss = `
+        #circle-button {
+                position: fixed;
+                bottom: 20px;
+                left: 20px;
+                width: 60px;
+                height: 60px;
+                color: white;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                cursor: pointer;
+                z-index: 1000;
+        }
+        #dialog-box {
+                position: fixed;
+                bottom: 80px;
+                left: 20px;
+                background-color: #a9a9a9e0;
+                border: 3px solid darkred;
+                z-index: 1000;
+        }
+        .tapI {
+                display: inline-block;
+                border: none;
+                font-size: 16px;
+                padding: 6px 20px;
+                text-decoration: none;
+                background-color: #cdcdcde0;
+                cursor: pointer;
+        }
+        .tabA {
+                display: inline-block:
+                border: none;
+                font-size: 16px;
+                padding 6px 20px;
+                text-decoration: none;
+                background-color: #838383e0;
+        }
+        .tabA:hover {
+                background-color: #e5c19ce0;
+        }
+        .tabI:hover {
+                background-color: #e5c19ce0;
+        }
+        #savedExp {
+                width: -webkit-fill-available;
+                height: 240px;
+                flex-direction: column;
+                gap: 3px;
+                justify-content: flex-start;
+                align-items: center;
+                overflow-y: scroll;
+                padding-left: 15px;
+                padding-right: 15px;
+                padding-top: 4px;
+                border: black 2px solid;
+        }
+        .saveRow {
+                text-align: center;
+                background-color: white;
+                height: 24px;
+                justify-content: flex-end;
+                width: -webkit-fill-available;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+        }
+        .saveRow:hover {
+                background-color: #e5c19ce0;
+        }
+        .deleteb {
+                background: none;
+                border: none;
+                cursor: pointer;
+        }
+        .emptyButton {
+                width: -webkit-fill-available;
+                border: none;
+                background: none;
+        }
+        .emptyButton:hover {
+                background-color: #e5c19ce0;
+        }
+        .checked {
+                background-color: red;
+                outline: darkred 2px solid;
+        }
+        .checkSwitch {
+                display: inline-block;
+                width: 32px;
+                height: 15px;
+                border-radius: 2px;
+                padding 1px;
+                position: relative;
+                transiton: all 0.2s ease;
+                cursor: pointer;
+                vertical-align: middle;
+                border: 0;
+        }
+        .checkSwitchLabel {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+        }
+        .label {
+                text-align: center;
+        }
+        #copyBtn {
+                position: absolute;
+                background-color: #c8c7c7;
+                width: 100px;
+                height: 30px;
+                right: 25px;
+                top: 280px;
+                color: black;
+                border: darkred 2px solid;
+                text-shadow: 0px 0px 6px darkred;
+                text-align: center;
+                cursor: pointer;
+                z-index: 1;
+        }
+        #copyBtn:hover {
+                background-color: #838383e0;
+        }
+        #resultsDisplay:hover {
+                filter: unset;
+                text-decoration: none;
+        }
+        .VMrow {
+                height: 25px;
+                margin: 0px;
+        }
+`;
+
+// INject HTML and CSS into the DOM
+let VIOLENTMONKEY = GM_addElement(document.shadowRoot, 'div', id="VIOLENTMONKEY");
+VIOLENTMONKEY.innerHTML = buttonHTML
+let styleElement = GM_addStyle(styleCss);
+
+const style = document.getElementById('save');
+const saveField = document.getElementById('saveField');
+const regex = document.getElementById('regexInpt');
+const circleButton = document.getElementById('circle-button');
+const dialogBox = document.getElementById('dialog-box');
+const submit = document.getElementById('submit');
+const display = document.getElementById('resultsDisplay');
+const commaSep = document.getElementById('commaSeparatedCheckbox');
+const orSep = document.getElementById('orSeparatedCheckbox');
+const selSearch = document.getElementById('selectionSearch');
+const pageSearch = document.getElementById('pageSearch');
+const resultTab = document.getElementById('resultsTab');
+const savedTab = document.getElementById('savedTab');
+const resultsOutput = document.getElementById('results');
+const savedExp = document.getElementById('savedExp');
+const quotesCheck = document.getElementById('quotesCheckbox');
+let resultso = Array();
+const copyBtn = document.getElementById('copyBtn');
+
+//Logic for showing/hiding dialog box
+//const circleButton = document.getElementById('circle-button');
+circleButton.addEventListener('click', () => {circleButton.style.backgroundColor = circleButton.style.backgroundColor === 'red' ? 'darkred' : 'red';
+    circleButton.style.borderRadius = circleButton.style.borderRadius == '50%' ? '20%' : '50%';
+    dialogBox.style.display = dialogBox.style.display === 'none' ? 'flex' : 'none';
+});
+
+//Copy Btn Logic
+function copyDisplayText() {
+        let text =display.innerHTML.toString();
+        text = text.replaceAll("&lt;","<");
+        text = text.replaceAll("&gt;",">");
+        console.log(text);
+        GM_setClipboard(text, 'text/plain');
+}
+copyBtn.addEventListener('click', () => {copyDisplayText()});
+
+function searchFunction(regex,searchArea, search) {
+        console.log("Regex: ", regex);
+        if (searchArea) {
+                let search = window.getSelection().toString();
+                console.log("Search: ", search);
+                let results = search.match(regex);
+                results = new Set(results);
+                results = Array.from(results);
+                console.log("Match: ", results);
+                return results;
+        } else{
+                const resultSet = new Set();
+                function searchf(node) {
+                        if (node.nodeType === node.TEXT_NODE) {
+                                const matches = node.textContent.match(regex);
+                                if (matches) {
+                                        matches.forEach(match => resultSet.add(match));
+                                }
+                        } else if (node.nodeType === node.ELEMENT_NODE) {
+                                node.childNodes.forEach(node => searchf(node));
+                        }
+                }
+                searchf(document.body);
+                resultArray = Array.from(resultSet);
+                console.log(resultArray)
+                return resultArray;
+        }
+}
+
+function resultsDisplay(results) {
+        let text = "";
+        let separator = "\r";
+        if (commaSep.ariaChecked=="true") {
+                separator = ",\r";
+        } else if ( orSep.ariaChecked=="true") {
+                separator = " OR ";
+        }
+        let quotes = false;
+        if (quotesCheck.ariaChecked=="true") {
+                quotes = true;
+        }
+
+        for (let i=0, len =results.length; i< len; i++) {
+                if (len-1 != i) {
+                        if (quotes==true) {
+                                text += '"';
+                                text += results[i];
+                                text += '"';
+                                text += separator;
+                        } else {
+                                text += results[i];
+                                text += separator;
+                        }
+                } else {
+                        if (quotes==true) {
+                                text += '"';
+                                text += results[i];
+                                text += '"';
+                        } else {
+                                text += results[i];
+                        }
+                }
+        }
+        text = text.replaceAll(/</gi,`&lt;`);
+        text = text.replaceAll(/>/gi,`&gt;`);
+        console.log(text);
+        display.innerHTML = text;
+}
+
+//selSearch - pageSearch
+// Search Start and Event listener
+function searchSubmit() {
+        savedTab.className = "tabI";
+        resultTab.className = "tabA";
+        savedExp.style.display = "none";
+        resultsOutput.style.display = "flex";
+        let searchArea = false; // False means page, true means selection
+        if (selSearch.checked) {
+                searchArea = true;
+        }
+        regexSearchTerm = RegExp(regex.value,"gi");
+        if (searchArea == true) {
+                let search = window.getSelection().toString();
+                resultso = searchFunction(regexSearchTerm, searchArea, search);
+                resultsDisplay(resultso);
+        } else if (pageSearch.checked == true) {
+                resultso = searchFunction(regexSearchTerm, searchArea);
+                resultsDisplay(resultso);
+        }
+}
+
+submit.addEventListener('click', () => {
+        savedTab.className = "tabI";
+        resultTab.className = "tabA";
+        savedExp.style.display = "none";
+        resultsOutput.style.display = "flex";
+        let searchArea = false; // False means page, true means selection
+        if (selSearch.checked) {
+                searchArea = true;
+        }
+        regexSearchTerm = RegExp(regex.value,"gi");
+        if (searchArea == true) {
+                let search = window.getSelection().toString();
+                //console.log("regex: ",regexSearchTerm)
+                //console.log("search Text: ",searchArea)
+                resultso = searchFunction(regexSearchTerm, searchArea, search)
+                resultsDisplay(resultso)
+        } else if (pageSearch.checked == true) {
+                //console.log("regex: ",regexSearchTerm)
+                //console.log("search Text: ",searchArea)
+                resultso = searchFunction(regexSearchTerm, searchArea)
+                resultsDisplay(resultso)
+        }
+});
+
+// Adds logic for Checked boses of separation
+commaSep.addEventListener('click', () => {
+        orSep.className = 'checkSwitch';
+        orSep.ariaChecked = false;
+});
+orSep.addEventListener('click', () => {
+        commaSep.className = 'checkSwitch';
+        commaSep.ariaChecked = false;
+});
+
+//Logic for updating the display with the new formated results
+
+quotesCheck.addEventListener('click', () => {
+        console.log('QuotesCheck', resultso)
+        resultsDisplay(resultso)
+});
+orSep.addEventListener('click', () => {
+        console.log('orSep', resultso)
+        resultsDisplay(resultso)
+});
+commaSep.addEventListener('click', () => {
+        console.log('commaSep', resultso)
+        resultsDisplay(resultso)
+});
+
+// Sets the default Search area
+
+pageSearch.checked = true;
+pageSearch.addEventListener('click', () => {
+        selSearch.checked = false;
+});
+selSearch.addEventListener('click', () => {
+        pageSearch.checked = false;
+});
+
+function getValues(inpDict) {
+        let output = {}
+        for (x in inpDict) {
+                output[inpDict[x]] = GM_getValue(inpDict[x])
+        }
+        return output
+}
+
+saveb.addEventListener('click', () => {
+        if (saveField.value != "" & regex.value != "") {
+                GM_setValue(saveField.value, regex.value);
+                let savedValueList = GM_listValues()
+                savedValueListc = getValues(savedValueList)
+                console.log(savedValueListc)
+                updateSaves()
+        }
+});
+
+GM_deleteValue('')
+
+function deleteSave(id) {
+        console.log("Delete: ",id)
+        GM_deleteValue(id)
+        console.log(getValues(GM_listValues()))
+        updateSaves()
+}
+
+function updateSaves() {
+        let savedValueList = GM_listValues()
+        savedValueListc = getValues(savedValueList)
+        console.log(savedValueListc)
+        const saveOutputArea = document.getElementById('savedExp');
+        let saveOutputHTML = "";
+
+        for (var x in savedValueListc) {
+                let value = savedValueListc[x].replaceAll("\\","\\\\")
+                let row = `<div class="saveRow"><button class="emptyButton" style="color:black;" onclick="document.getElementById('regexInpt').value = '${value}'; console.log('${value}'); document.getElementById('saveField').value = '${x}';">${x}</button><button id='${x}' class="deleteb">❌</button></div>\r`;
+                saveOutputHTML += row;
+        }
+        saveOutputArea.innerHTML = saveOutputHTML;
+
+        for (x in savedValueListc) {
+                document.getElementById(x).addEventListener('click', function(event) {
+                        console.log('Delete',x)
+                        GM_deleteValue(event.target.id)
+                        console.log(getValues(GM_listValues()))
+                        updateSaves()
+                });
+                }
+}
+updateSaves();
+
+resultTab.addEventListener('click', () => {
+        savedTab.className = "tabI";
+        resultTab.className = "tabA";
+        savedExp.style.display = "none";
+        resultsOutput.style.display = "flex";
+});
+savedTab.addEventListener('click', () => {
+        savedTab.className = "tabA";
+        resultTab.className = "tabI";
+        resultsOutput.style.display = "none";
+        savedExp.style.display = 'flex';
+});
+VM.shortcut.register('a-t',() => console.log('Alt-t: pressed'));
+VM.shortcut.register('a-s',() => {console.log('Alt-s: pressed'); searchSubmit();});
+VM.shortcut.register('a-c',() => {console.log('Alt-c: pressed');copyDisplayText();});
