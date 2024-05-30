@@ -328,7 +328,7 @@ function searchSubmit() {
         if (selSearch.checked) {
                 searchArea = true;
         }
-        regexSearchTerm = RegExp(regex.value,"gi");
+        regexSearchTerm = RegExp(regex.value,"g");
         if (searchArea == true) {
                 let search = window.getSelection().toString();
                 resultso = searchFunction(regexSearchTerm, searchArea, search);
@@ -348,7 +348,7 @@ submit.addEventListener('click', () => {
         if (selSearch.checked) {
                 searchArea = true;
         }
-        regexSearchTerm = RegExp(regex.value,"gi");
+        regexSearchTerm = RegExp(regex.value,"g");
         if (searchArea == true) {
                 let search = window.getSelection().toString();
                 //console.log("regex: ",regexSearchTerm)
