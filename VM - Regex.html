@@ -9,7 +9,7 @@
 // @grant       GM_setClipboard
 // @grant       GM_addElement
 // @grant       GM_addStyle
-// @version     1.7
+// @version     1.8
 // @author      Spencer Anderson
 // @description Creates a REGEX search dialog box on webpages.
 // @require     https://cdn.jsdelivr.net/npm/@violentmonkey/shortcut@1
@@ -25,17 +25,17 @@ const buttonHTML = `<div id="circle-button" style="background-color: red; border
         <div id="dialog-box" style="display: none; flex-direction: column; align-items: center; gap: 3px; width:307px; height: 374px;">
                 <div style="display:flex; flex-direction: colum; gap: 3px; margin: 15px; width: -webkit-fill-available; margin-bottom: 0px; flex-direction: column;">
                         <div class="VMrow">
-                                <input id='regexInpt' type="text" plaveholder="Regex Exp. Input" style="height: 20px; width: 70%; background-color: white; border: darkred 1px solid; color: black;">
-                                <button id="submit" style="display: inline-block; border: none; font-size: 16px; padding: 3px 10px; background-color: #cdcdcde0; color: black; cursor: pointer;">Search</button>
+                                <input id='regexInpt' type="text" placeholder="Regex Exp. Input" style="height: 25px; width: 190px; background-color: #4a4a4a9e; border: darkred 1px solid; color: #cd071e;">
+                                <button id="submit" style="height: 25px; display: inline-block; border: none; font-size: 16px; padding: 3px 10px; background-color: #cdcdcde0; color: black; cursor: pointer;">Search</button>
                         </div>
-                        <div class="VMrow" style="display: flex; justify-content: center; gap: 5px;">
+                        <div class="VMrow" style="display: flex; justify-content: center; gap: 5px; color:black;">
                                 Search:
                                 <input type="checkbox" id="selectionSearch"> Selection
                                 <input type="checkbox" id="pageSearch"> Page
                         </div>
                         <div class="VMrow">
-                                <button id="saveb" style='display: inline-block; border: none; font-size: 16px; padding: 3px 10px; background-color: #cdcdcde0; color: black; cursor: pointer;'>Save</button>
-                                <input id='saveField' type='text' placeholder='Save Title' style='height: 20px; width: 70%; background-color: white; border: darkred 1px solid; color: black;'>
+                                <button id="saveb" style='height: 25px; display: inline-block; border: none; font-size: 16px; padding: 3px 10px; background-color: #cdcdcde0; color: black; cursor: pointer;'>Save</button>
+                                <input id='saveField' type='text' placeholder='Save Title' style='height: 25px; width: 190px; background-color: #4a4a4a9e; border: darkred 1px solid; color: #cd071e;'>
                         </div>
                         <div class="VMrow" style='display: flex; justify-content: center; gap: 5px;'>
                                 <button id="resultsTab" class='tabA' style="height:25px">Results</button>
@@ -45,7 +45,7 @@ const buttonHTML = `<div id="circle-button" style="background-color: red; border
                 <div id='results' style='width: 300px; height: -webkit-fill-available; display: flex; width: -webkit-fill-available; border: black 2px solid; flex-direction: column; justify-content: space-between; height: 250px;'>
                     <div>
                         <button id='copyBtn'>Copy 📋</button>
-                        <a id='resultsDisplay' type='text' style='line-height: 1.2; color: black; padding: 3px; margin-bottom: 10px; white-space: pre-line; background-color: white; width: -webkit-fill-available; display: block; overflow-y: scroll; background-color: white; height: 175px;' class='filledTextBox'>
+                        <a id='resultsDisplay' type='text' style='line-height: 1.2; color: black; padding: 3px; margin-bottom: 10px; white-space: pre-line; width: -webkit-fill-available; display: block; overflow-y: scroll; background-color: #4a4a4a9e; height: 165px;' class='filledTextBox'>
                         </a>
                     </div>
                     <div style="display: flex; width: -webkit-fill-available; gap: 5px; justify-content: space-around;">
@@ -73,6 +73,10 @@ const buttonHTML = `<div id="circle-button" style="background-color: red; border
         </div>`;
 
 const styleCss = `
+        ::placeholder {
+            color: darkGrey;
+            opacity: 1;
+        }
         #circle-button {
                 position: fixed;
                 bottom: 20px;
@@ -102,6 +106,7 @@ const styleCss = `
                 text-decoration: none;
                 background-color: #cdcdcde0;
                 cursor: pointer;
+                color: darkGrey;
         }
         .tabA {
                 display: inline-block:
@@ -110,6 +115,7 @@ const styleCss = `
                 padding 6px 20px;
                 text-decoration: none;
                 background-color: #838383e0;
+                color: black;
         }
         .tabA:hover {
                 background-color: #e5c19ce0;
@@ -179,14 +185,16 @@ const styleCss = `
         }
         .label {
                 text-align: center;
+                color: black;
+                font-size: 11pt;
         }
         #copyBtn {
                 position: absolute;
                 background-color: #c8c7c7;
                 width: 100px;
                 height: 30px;
-                right: 25px;
-                top: 280px;
+                right: 18px;
+                top: 265px;
                 color: black;
                 border: darkred 2px solid;
                 text-shadow: 0px 0px 6px darkred;
@@ -204,11 +212,15 @@ const styleCss = `
         .VMrow {
                 height: 25px;
                 margin: 0px;
+                display: flex;
+                flex-direction: row;
+                justify-content: center;
+                gap: 5px;
         }
 `;
 
 // INject HTML and CSS into the DOM
-let VIOLENTMONKEY = GM_addElement(document.shadowRoot, 'div', id="VIOLENTMONKEY");
+let VIOLENTMONKEY = GM_addElement(document.body, 'div', id="VIOLENTMONKEY");
 VIOLENTMONKEY.innerHTML = buttonHTML
 let styleElement = GM_addStyle(styleCss);
 
@@ -248,6 +260,20 @@ function copyDisplayText() {
 }
 copyBtn.addEventListener('click', () => {copyDisplayText()});
 
+function extractTextContent(element) {
+    let text = '';
+    if (element.nodeType === Node.TEXT_NODE) {
+        text += element.nodeValue;
+    } else {
+        for (let child of element.childNodes) {
+            text += extractTextContent(child);
+        }
+    }
+    return text;
+}
+
+
+
 function searchFunction(regex,searchArea, search) {
         console.log("Regex: ", regex);
         if (searchArea) {
@@ -260,20 +286,33 @@ function searchFunction(regex,searchArea, search) {
                 return results;
         } else{
                 const resultSet = new Set();
-                function searchf(node) {
-                        if (node.nodeType === node.TEXT_NODE) {
+                function search(node) {
+                        if (node.nodeType === Node.TEXT_NODE) {
+                                console.log(node.wholeText);
                                 const matches = node.textContent.match(regex);
                                 if (matches) {
                                         matches.forEach(match => resultSet.add(match));
                                 }
-                        } else if (node.nodeType === node.ELEMENT_NODE) {
-                                node.childNodes.forEach(node => searchf(node));
+                        } else if (node.nodeType === Node.ELEMENT_NODE) {
+                                node.childNodes.forEach(search);
                         }
                 }
-                searchf(document.body);
+                function matchSearch(text) {
+                    const matches = text.match(regex)
+                    matches.forEach(match => resultSet.add(match))
+                }
+                //let search = document.body.innerHTML;
+                let text = extractTextContent(document.body)
+                matchSearch(text)
+                search(document.body);
                 resultArray = Array.from(resultSet);
-                console.log(resultArray)
                 return resultArray;
+                /*console.log("Search: ", search);
+                let results = search.match(regex);
+                results = new Set(results);
+                results = Array.from(results);
+                console.log("Match: ", results);*/
+                //return results;
         }
 }
 
@@ -465,3 +504,4 @@ savedTab.addEventListener('click', () => {
 VM.shortcut.register('a-t',() => console.log('Alt-t: pressed'));
 VM.shortcut.register('a-s',() => {console.log('Alt-s: pressed'); searchSubmit();});
 VM.shortcut.register('a-c',() => {console.log('Alt-c: pressed');copyDisplayText();});
+
